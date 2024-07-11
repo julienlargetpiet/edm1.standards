@@ -2,6 +2,7 @@
 
 export(better_match)
 export(better_split)
+export(better_split_any)
 export(better_sub)
 export(better_sub_mult)
 export(better_unique)
