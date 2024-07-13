@@ -468,37 +468,76 @@ grep_all2 <- function(inpt_v, pattern_v){
 #' [10] "_"     "_"     "-opo-" "/"     "m"     "/"     "-u"    "_"     "i-"   
 #' [19] "_"     "--"   
 #'
+#'
+#' print(better_split_any(inpt = "(ok(ee:56))(ok2(oui)(ee:4))", split_v = c("(", ")", ":")))
+#'
+#'  [1] "("   "ok"  "("   "ee"  ":"   "56"  ")"   ")"   "("   "ok2" "("   "oui"
+#'  [13] ")"   "("   "ee"  ":"   "4"   ")"   ")"  
+#'
 #' @export
 
 better_split_any <- function(inpt, split_v = c()){
+  glue_groupr_v <- function(inpt_v, group_v = c(), untl){
+    rtn_v <- c()
+    cur_v <- c()
+    grp_status <- FALSE
+    cnt_untl = 0
+    for (el in inpt_v) {
+      if (el %in% group_v & cnt_untl < untl){
+        grp_status <- TRUE
+        cur_v <- c(cur_v, el)
+        cnt_untl = cnt_untl + 1
+      }else if (grp_status){
+        grp_status <- FALSE
+        rtn_v <- c(rtn_v, paste(cur_v, collapse = ""))
+        cur_v <- c()
+        if (el %in% group_v){
+          cnt_untl = 1
+          cur_v <- c(el)
+          grp_status <- TRUE
+        }else{
+          cnt_untl = 0
+          rtn_v <- c(rtn_v, el)
+        }
+      }else{
+        rtn_v <- c(rtn_v, el)
+      }
+    }
+    if (length(cur_v) > 0){
+      rtn_v <- c(rtn_v, paste(cur_v, collapse = ""))
+    }
+    return(rtn_v)
+  }
   regex_spe_detect <- function(inpt){
-          fillr <- function(inpt_v, ptrn_fill="\\.\\.\\.\\d"){
+        fillr <- function(inpt_v, ptrn_fill="\\.\\.\\.\\d"){
+          ptrn <- grep(ptrn_fill, inpt_v)
+          while (length(ptrn) > 0){
             ptrn <- grep(ptrn_fill, inpt_v)
-            while (length(ptrn) > 0){
-              ptrn <- grep(ptrn_fill, inpt_v)
-              idx <- ptrn[1] 
-              untl <- as.numeric(c(unlist(strsplit(inpt_v[idx], split="\\.")))[4]) - 1
-              pre_val <- inpt_v[(idx - 1)]
-              inpt_v[idx] <- pre_val
-              if (untl > 0){
-                for (i in 1:untl){
-                  inpt_v <- append(inpt_v, pre_val, idx)
-                }
+            idx <- ptrn[1] 
+            untl <- as.numeric(c(unlist(strsplit(inpt_v[idx], split="\\.")))[4]) - 1
+            pre_val <- inpt_v[(idx - 1)]
+            inpt_v[idx] <- pre_val
+            if (untl > 0){
+              for (i in 1:untl){
+                inpt_v <- append(inpt_v, pre_val, idx)
               }
-            ptrn <- grep(ptrn_fill, inpt_v)
             }
-            return(inpt_v)
+          ptrn <- grep(ptrn_fill, inpt_v)
           }
-          inpt <- unlist(strsplit(x=inpt, split=""))
-          may_be_v <- c("[", "]", "{", "}", "-", "_", ".", "(", ")", "/", "%", "*", "^", "?", "$")
-          pre_idx <- unique(match(x=inpt, table=may_be_v))
-          pre_idx <- pre_idx[!(is.na(pre_idx))]
-          for (el in may_be_v[pre_idx]){
-                  for (i in grep(pattern=paste("\\", el, sep=""), x=inpt)){
-                          inpt <- append(x=inpt, values="\\", after=(i-1))
-                  }
-          }
-    return(paste(inpt, collapse=""))
+          return(inpt_v)
+        }
+        inpt <- unlist(strsplit(x=inpt, split=""))
+        may_be_v <- c("[", "]", "{", "}", "-", "_", ".", "(", ")", "/", "%", "*", "^", "?", "$")
+        pre_idx <- unique(match(x=inpt, table=may_be_v))
+        pre_idx <- pre_idx[!(is.na(pre_idx))]
+        for (el in may_be_v[pre_idx]){
+                cnt = 0
+                for (i in grep(pattern=paste("\\", el, sep=""), x=inpt)){
+                        inpt <- append(x=inpt, values="\\", after=(i - 1 + cnt))
+                        cnt = cnt + 1
+                }
+        }
+          return(paste(inpt, collapse=""))
   }
   for (split in split_v){
     pre_inpt <- inpt
@@ -522,8 +561,11 @@ better_split_any <- function(inpt, split_v = c()){
           cnt = cnt + 2
         }
       }
-      last_verif <- unlist(strsplit(x = el, split = ""))
-      if (paste(last_verif[(length(last_verif) - (nchar(split) - 1)):length(last_verif)], collapse = "") == split){
+      cur_grp <- c()
+      split_decomp <- unlist(strsplit(x = split, split = ""))
+      for (el2 in split_decomp){ cur_grp <- c(cur_grp, el2) }
+      last_verif <- glue_groupr_v(unlist(strsplit(x = el, split = "")), group_v = cur_grp, untl = nchar(split))
+      if (sum(grepl(x = last_verif, pattern = regex_spe_detect(split))) == (sum(grepl(x = cur_splt, pattern = regex_spe_detect(split))) + 1)){
         cur_splt <- c(cur_splt, split)
       }
       inpt <- c(inpt, cur_splt)
@@ -531,4 +573,5 @@ better_split_any <- function(inpt, split_v = c()){
   }
   return(inpt)
 }
+
 
